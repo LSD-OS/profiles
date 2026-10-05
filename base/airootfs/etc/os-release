@@ -1,0 +1,7 @@
+NAME=LSD_OS
+PRETTY_NAME="LSD_OS!"
+ID=lsdos
+ID_LIKE=lsd
+BUILD_ID=rolling
+ANSI_COLOR="0;0"
+LOGO=lsd-logo
