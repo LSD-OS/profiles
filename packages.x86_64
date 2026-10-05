@@ -2,7 +2,7 @@
 # core
 #
 base
-elogind-runit
+
 mkinitcpio
 mkinitcpio-archiso
 linux-firmware
@@ -11,8 +11,10 @@ linux-headers
 opendoas
 openssh
 linux
-runit
+dinit
 less
+bash
+tree
 
 inetutils
 iptables
@@ -38,23 +40,28 @@ fastfetch
 #
 # mirrorlist and keyrings
 #
-#archlinux-keyring
+archlinux-keyring
 artix-keyring
-#chaotic-keyring
+chaotic-keyring
 
-#archlinux-mirrorlist
+archlinux-mirrorlist
 artix-mirrorlist
-#chaotic-mirrorlist
+chaotic-mirrorlist
 
 #
-# runit services
+# dinit services
 #
-dbus-runit
-lightdm-runit
-chrony-runit
-networkmanager-runit
-openssh-runit
-bluez-runit
+dbus-dinit
+lightdm-dinit
+chrony-dinit
+networkmanager-dinit
+openssh-dinit
+#bluez-dinit
+udev
+dinit-base
+artix-live-dinit
+elogind
+elogind-dinit
 
 #
 # desktop
