@@ -34,8 +34,6 @@ for s in NetworkManager networkmanager chronyd chrony lightdm; do
     fi
 done
 
-tree /etc/dinit.d
-
 #cp -f /usr/share/custom_applications/*.desktop /usr/share/applications/ 2>/dev/null
 #rm -rf /usr/share/custom_applications
 

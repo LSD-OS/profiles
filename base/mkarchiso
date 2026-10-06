@@ -906,6 +906,68 @@ _make_bootmode_uefi-ia32.systemd-boot.esp() {
     return 1
 }
 
+# Prepare Limine for UEFI booting
+_make_bootmode_uefi.limine() {
+    _msg_info "Setting up Limine for UEFI booting..."
+
+    install -d -m 0755 -- "${work_dir}/limine"
+
+    # Prepare configuration files
+    sed "s|%ARCHISO_LABEL%|${iso_label}|g;
+         s|%ARCHISO_UUID%|${iso_uuid}|g;
+         s|%INSTALL_DIR%|${install_dir}|g;
+         s|%ARCH%|${arch}|g" \
+        "${profile}/limine/limine.conf" >"${work_dir}/limine/limine.conf"
+
+    # Locate and copy Limine EFI binaries
+    local target_efi="BOOT${uefi_arch[$arch]^^}.EFI"
+    if [[ -f "${pacstrap_dir}/usr/share/limine/${target_efi}" ]]; then
+        cp -- "${pacstrap_dir}/usr/share/limine/${target_efi}" "${work_dir}/${target_efi}"
+    elif [[ -f "${pacstrap_dir}/usr/share/limine/BOOT${uefi_arch[$arch]}.EFI" ]]; then
+        cp -- "${pacstrap_dir}/usr/share/limine/BOOT${uefi_arch[$arch]}.EFI" "${work_dir}/${target_efi}"
+    fi
+
+    efiboot_files+=("${work_dir}/${target_efi}"
+                    "${work_dir}/limine/"
+                    "${pacstrap_dir}/boot/vmlinuz-"*
+                    "${pacstrap_dir}/boot/initramfs-"*".img")
+
+    # Mixed-mode booting on x86_64 systems with IA32 UEFI
+    if [[ "$arch" == 'x86_64' && -f "${pacstrap_dir}/usr/share/limine/BOOTIA32.EFI" ]]; then
+        cp -- "${pacstrap_dir}/usr/share/limine/BOOTIA32.EFI" "${work_dir}/BOOTIA32.EFI"
+        efiboot_files+=("${work_dir}/BOOTIA32.EFI")
+    fi
+
+    # Create a FAT image for the EFI system partition
+    _make_efibootimg
+
+    # Install to EFI system partition
+    install -d -m 0755 -- "${isofs_dir}/EFI/BOOT"
+    mcopy -i "${efibootimg}" "${work_dir}/${target_efi}" "::/EFI/BOOT/${target_efi}"
+    install -m 0644 -- "${work_dir}/${target_efi}" "${isofs_dir}/EFI/BOOT/${target_efi}"
+
+    if [[ "$arch" == 'x86_64' && -f "${work_dir}/BOOTIA32.EFI" ]]; then
+        mcopy -i "${efibootimg}" "${work_dir}/BOOTIA32.EFI" "::/EFI/BOOT/BOOTIA32.EFI"
+        install -m 0644 -- "${work_dir}/BOOTIA32.EFI" "${isofs_dir}/EFI/BOOT/BOOTIA32.EFI"
+    fi
+
+    # Install limine.conf to both ESP (::/EFI/BOOT/limine.conf and ::/limine.conf) and ISO9660
+    mcopy -i "${efibootimg}" "${work_dir}/limine/limine.conf" "::/EFI/BOOT/limine.conf"
+    mcopy -i "${efibootimg}" "${work_dir}/limine/limine.conf" "::/limine.conf"
+    install -m 0644 -- "${work_dir}/limine/limine.conf" "${isofs_dir}/EFI/BOOT/limine.conf"
+    install -m 0644 -- "${work_dir}/limine/limine.conf" "${isofs_dir}/limine.conf"
+
+    # Copy any extra limine files (e.g. wallpapers, fonts) from profile/limine
+    if compgen -G "${profile}/limine/!(*.conf)" &>/dev/null; then
+        cp -r --remove-destination -- "${profile}/limine/"!(*.conf) "${isofs_dir}/"
+    fi
+
+    # Copy kernel and initramfs to FAT image
+    _run_once _make_boot_on_fat
+
+    _msg_info "Done! Limine set up for UEFI booting successfully."
+}
+
 _validate_requirements_bootmode_bios.syslinux() {
     # Check if the architecture supports BIOS booting
     if [[ "$arch" != @('x86_64'|'i686') ]]; then
@@ -1095,6 +1157,21 @@ _validate_requirements_bootmode_uefi-x64.grub.esp() {
 _validate_requirements_bootmode_uefi-x64.grub.eltorito() {
     # uefi-x64.grub.eltorito has the exact same requirements as uefi-x64.grub.esp
     _validate_requirements_bootmode_uefi-x64.grub.esp
+}
+
+_validate_requirements_bootmode_uefi.limine() {
+    # Check if the limine package is in the package list
+    # shellcheck disable=SC2076
+    if [[ ! " ${pkg_list[*]} " =~ ' limine ' ]]; then
+        (( validation_error=validation_error+1 ))
+        _msg_error "Validating '${bootmode}': The 'limine' package is missing from the package list!" 0
+    fi
+
+    # Check if limine configuration file exists
+    if [[ ! -f "${profile}/limine/limine.conf" ]]; then
+        (( validation_error=validation_error+1 ))
+        _msg_error "Validating '${bootmode}': '${profile}/limine/limine.conf' is missing!" 0
+    fi
 }
 
 # Remove deprecated boot mode from the bootmodes array
@@ -1431,6 +1508,11 @@ _add_xorrisofs_options_uefi.systemd-boot() {
 
 # GRUB in an attached EFI system partition and El Torito
 _add_xorrisofs_options_uefi.grub() {
+    _add_common_xorrisofs_options_uefi
+}
+
+# Limine in an attached EFI system partition and El Torito
+_add_xorrisofs_options_uefi.limine() {
     _add_common_xorrisofs_options_uefi
 }
 

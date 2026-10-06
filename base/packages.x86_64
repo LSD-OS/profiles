@@ -33,8 +33,7 @@ e2fsprogs
 exfatprogs
 efibootmgr
 ntfs-3g
-grub
-syslinux
+limine
 os-prober
 device-mapper
 lsb-release
