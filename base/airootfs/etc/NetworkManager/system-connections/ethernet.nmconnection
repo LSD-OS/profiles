@@ -1,0 +1,10 @@
+[connection]
+id=Ethernet
+type=ethernet
+autoconnect=true
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto

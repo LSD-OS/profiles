@@ -9,7 +9,7 @@ arch_chroot() {
 
 do_merge() {
 
-arch_chroot "$(cat << EOF
+arch_chroot "$(cat << 'EOF'
 
 echo "##############################"
 echo "# start chrooted commandlist #"
@@ -26,13 +26,18 @@ pacman -Sy
 
 #rm -rf /usr/share/applications/calamares.desktop
 
-# Enable services
+# Enable services for Dinit
 mkdir -p /etc/dinit.d/boot.d
-for s in NetworkManager networkmanager chronyd chrony lightdm; do
-    if [ -f "/etc/dinit.d/$s" ]; then
+for s in NetworkManager chrony; do
+    if [ -e "/etc/dinit.d/$s" ]; then
         ln -sfv "../$s" "/etc/dinit.d/boot.d/$s"
+    else
+        echo "Aviso: Serviço $s não encontrado em /etc/dinit.d/"
     fi
 done
+
+echo "Serviços habilitados em boot.d:"
+ls -l /etc/dinit.d/boot.d/
 
 #cp -f /usr/share/custom_applications/*.desktop /usr/share/applications/ 2>/dev/null
 #rm -rf /usr/share/custom_applications
