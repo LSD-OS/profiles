@@ -15,4 +15,5 @@ airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '15' '-b' '1M'
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/gshadow"]="0:0:400"
+  ["/etc/doas.conf"]="0:0:400"
 )
