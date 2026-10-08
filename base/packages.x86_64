@@ -6,13 +6,13 @@ mkinitcpio
 mkinitcpio-archiso
 linux-firmware
 linux-headers
-opendoas
 openssh
 linux
 dinit
 less
 dash
 bash
+sudo
 udev
 pv
 nano
