@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 iso_name="LSD_OS"
-iso_label="AMAROK_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
+iso_label="BASE_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
 iso_publisher="LSD-OS"
 iso_application="LSD-OS"
 iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
@@ -15,5 +15,5 @@ airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '15' '-b' '1M'
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/gshadow"]="0:0:400"
-  ["/etc/doas.conf"]="0:0:400"
+  ["/etc/sudoers"]="0:0:400"
 )
