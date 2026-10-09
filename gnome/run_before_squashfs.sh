@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-lsd_os_version="xfce"
+lsd_os_version="gnome"
 
 script_path=$(readlink -f "${0%/*}")
 work_dir="work"

@@ -41,6 +41,7 @@ lsb-release
 #
 # desktop environment
 #
+mesa
 
 #
 # mirrorlist and keyrings
