@@ -35,8 +35,16 @@ pacman-key --init
 pacman-key --populate archlinux artix
 pacman -Sy
 
-# Os serviços cosmic-greeter e cosmic-greeter-daemon vêm do pacote
-# cosmic-greeter-dinit (repo [lsd]); aqui só habilitamos.
+rm /bin/sh
+ln -sfv /bin/dash /bin/sh
+
+cat << 'CONFIG_EOF' >> /etc/greetd/config.toml
+
+[initial_session]
+command = "agreety --cmd /bin/sh"
+user = "liveuser"
+CONFIG_EOF
+
 enable_dinit_services dbus elogind chrony cosmic-greeter cosmic-greeter-daemon NetworkManager
 
 echo
