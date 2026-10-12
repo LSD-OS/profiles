@@ -38,10 +38,10 @@ pacman -Sy
 rm /bin/sh
 ln -sfv /bin/dash /bin/sh
 
-cat << 'CONFIG_EOF' >> /etc/greetd/config.toml
+cat << 'CONFIG_EOF' >> /etc/greetd/cosmic-greeter.toml
 
 [initial_session]
-command = "agreety --cmd /bin/sh"
+command = "cosmic-greeter-start"
 user = "liveuser"
 CONFIG_EOF
 
