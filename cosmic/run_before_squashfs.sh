@@ -39,6 +39,28 @@ pacman -Sy
 # cosmic-greeter-dinit (repo [lsd]); aqui só habilitamos.
 enable_dinit_services dbus elogind chrony cosmic-greeter cosmic-greeter-daemon NetworkManager
 
+# Autologin do liveuser: o greetd sobe a sessão direto no boot
+# ([initial_session]) e, depois de um logout, volta pro greeter COSMIC.
+# Equivale ao AutomaticLogin do gdm / auto_login do ly.
+# Importante: o command é o wrapper start-cosmic (do pacote cosmic-session),
+# o mesmo Exec do wayland-sessions/cosmic.desktop que o greeter usa no login
+# manual. O cosmic-session puro morre logo no início: exige um D-Bus de sessão
+# (zbus Builder::session no main.rs) e, sem o wrapper que o envolve num
+# dbus-run-session e define o env da sessão (XDG_SESSION_TYPE=wayland etc.),
+# a sessão inicial simplesmente não sobe.
+if [ -f /etc/greetd/cosmic-greeter.toml ] && ! grep -q 'initial_session' /etc/greetd/cosmic-greeter.toml; then
+    cat >> /etc/greetd/cosmic-greeter.toml << 'GREETD'
+
+[initial_session]
+command = "/usr/bin/start-cosmic"
+user = "liveuser"
+GREETD
+    echo ">>> Autologin do liveuser adicionado ao greetd:"
+    grep -A2 initial_session /etc/greetd/cosmic-greeter.toml
+else
+    echo "Aviso: /etc/greetd/cosmic-greeter.toml ausente ou autologin já configurado"
+fi
+
 echo
 echo "============================================"
 tree /etc/dinit.d
