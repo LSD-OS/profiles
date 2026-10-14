@@ -34,6 +34,15 @@ do_welcome() {
         echo ">>> cosmic-greeter-start com hook do lsd-welcome:"
         cat "${airootfs}/usr/bin/cosmic-greeter-start"
     fi
+
+    # tty1 é do lsd-welcome na live: sem o getty@tty1, o agetty dinâmico
+    # (ACTIVE_CONSOLES em console.conf) pula a tty1 — o script /usr/lib/
+    # dinit/agetty só acorda gettys cujo serviço existe em /etc/dinit.d
+    # ([ -f ... ] || continue) — e nenhum prompt disputa o teclado com a
+    # TUI. A tty1 fica com o serviço lsd-welcome, que a abre direto. As
+    # tty2-6 continuam disponíveis (Alt+F2...). Live-only: arquivo
+    # removido só no airootfs da build, o sistema instalado não herda.
+    rm -fv "${airootfs}/etc/dinit.d/getty@tty1"
 }
 
 do_merge() {
