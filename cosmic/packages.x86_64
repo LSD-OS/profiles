@@ -51,6 +51,7 @@ cosmic-terminal
 cosmic-text-editor
 cosmic-wallpapers
 cosmic-greeter-dinit
+lsd-welcome
 mesa
 
 #
