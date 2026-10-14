@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-lsd_os_version="base"
-
 script_path=$(readlink -f "${0%/*}")
 work_dir="work"
+lsd_os_version="base"
 
 arch_chroot() {
     arch-chroot "${script_path}/${work_dir}/x86_64/airootfs" /bin/bash -c "${1}"
@@ -15,8 +14,20 @@ echo "${lsd_os_version}" > "${script_path}/${work_dir}/x86_64/airootfs/etc/lsd-v
 
 arch_chroot "$(cat << 'EOF'
 
+enable_dinit_services() {
+    mkdir -p /etc/dinit.d/boot.d
+    
+    for s in "$@"; do
+        if [ -e "/etc/dinit.d/$s" ]; then
+            ln -sfv "../$s" "/etc/dinit.d/boot.d/$s"
+        else
+            echo "Aviso: Serviço $s não encontrado em /etc/dinit.d/"
+        fi
+    done
+}
+
 echo "##############################"
-echo "# start chrooted commandlist #"
+echo "#     chroot começa aqui     #"
 echo "##############################"
 
 rm -rf /etc/pacman.d/gnupg
@@ -24,43 +35,26 @@ pacman-key --init
 pacman-key --populate archlinux artix
 pacman -Sy
 
-# Root qt style for Calamares
-#mkdir -p /root/.config
-#cp -rf /home/liveuser/.config/{Kvantum,qt5ct} /root/.config/
+rm /bin/sh
+ln -sfv /bin/dash /bin/sh
 
-#rm -rf /usr/share/applications/calamares.desktop
+enable_dinit_services chrony NetworkManager
 
-# Enable services for Dinit
-mkdir -p /etc/dinit.d/boot.d
-for s in NetworkManager chrony; do
-    if [ -e "/etc/dinit.d/$s" ]; then
-        ln -sfv "../$s" "/etc/dinit.d/boot.d/$s"
-    else
-        echo "Aviso: Serviço $s não encontrado em /etc/dinit.d/"
-    fi
-done
-
-echo "Serviços habilitados em boot.d:"
-ls -l /etc/dinit.d/boot.d/
-
-#cp -f /usr/share/custom_applications/*.desktop /usr/share/applications/ 2>/dev/null
-#rm -rf /usr/share/custom_applications
+echo
+echo "============================================"
+tree /etc/dinit.d
+echo "============================================"
+echo
 
 usermod -aG users,adm,lp,power,video,network,storage,wheel,audio,sys,optical,scanner,rfkill,uucp liveuser
 
-#mv /home/liveuser/.config/fish/configlive.fish /home/liveuser/.config/fish/config.fish
-#mv /home/liveuser/.config/niri/cfg/autostart_live.kdl /home/liveuser/.config/niri/cfg/autostart.kdl
-
-echo "############################"
-echo "# end chrooted commandlist #"
-echo "############################"
+echo "##############################"
+echo "#    chroot termina aqui     #"
+echo "##############################"
 
 EOF
 )"
 }
 
-#################################
 ########## STARTS HERE ##########
-#################################
-
 do_merge

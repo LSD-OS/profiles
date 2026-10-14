@@ -63,6 +63,9 @@ pacman-key --init
 pacman-key --populate archlinux artix
 pacman -Sy
 
+rm /bin/sh
+ln -sfv /bin/dash /bin/sh
+
 # Os serviços cosmic-greeter e cosmic-greeter-daemon vêm do pacote
 # cosmic-greeter-dinit (repo [lsd]) e o lsd-welcome do pacote lsd-welcome
 # (repo [lsd]). Aqui só habilitamos.
