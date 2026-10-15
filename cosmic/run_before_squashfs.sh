@@ -43,6 +43,22 @@ do_welcome() {
     # tty2-6 continuam disponíveis (Alt+F2...). Live-only: arquivo
     # removido só no airootfs da build, o sistema instalado não herda.
     rm -fv "${airootfs}/etc/dinit.d/getty@tty1"
+
+    # Autologin do liveuser (live-only): "Iniciar ISO live" sai 0, o gate
+    # (waits-for = lsd-welcome acima) solta o greetd e o primeiro run dele
+    # sobe a sessão direto via [initial_session] — sem greeter pedindo
+    # login (ISO live é single-user, igual às lives de outras distros).
+    # Depois de um logout o greeter COSMIC assume (o runfile /run/greetd.run
+    # marca o primeiro run; ver context.rs do greetd). O command é o wrapper
+    # start-cosmic (pacote cosmic-session), o mesmo Exec do wayland-sessions/
+    # cosmic.desktop: o cosmic-session puro morre no início (exige D-Bus de
+    # sessão; o wrapper envolve num dbus-run-session e define o env).
+    if [ -f "${airootfs}/etc/greetd/cosmic-greeter.toml" ] && ! grep -q 'initial_session' "${airootfs}/etc/greetd/cosmic-greeter.toml"; then
+        printf '\n[initial_session]\ncommand = "/usr/bin/start-cosmic"\nuser = "liveuser"\n' \
+            >> "${airootfs}/etc/greetd/cosmic-greeter.toml"
+        echo ">>> Autologin do liveuser no greetd (live-only):"
+        tail -4 "${airootfs}/etc/greetd/cosmic-greeter.toml"
+    fi
 }
 
 do_merge() {
