@@ -1,0 +1,27 @@
+# Container para build da ISO LSD_OS (Arch/Artix)
+FROM archlinux:base-20260823.0.578598
+
+RUN pacman -Sy --noconfirm \
+        arch-install-scripts \
+        squashfs-tools \
+        xorriso \
+        dosfstools \
+        e2fsprogs \
+        erofs-utils \
+        mtools \
+        libisoburn \
+        git \
+        pv && \
+    rm -rf /var/cache/pacman/pkg/*
+
+# Inicializa o keyring do builder e importa a chave pública do LSD_OS
+COPY packages/lsd-keyring/lsd.key /tmp/lsd.key
+RUN pacman-key --init && \
+    pacman-key --populate archlinux && \
+    pacman-key --add /tmp/lsd.key && \
+    pacman-key --lsign-key ACED28D796B1606F89CCB0C71BE789704B4B4D36 && \
+    rm -f /tmp/lsd.key
+
+WORKDIR /build
+
+ENTRYPOINT ["/bin/bash"]
