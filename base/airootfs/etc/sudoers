@@ -85,7 +85,7 @@ root ALL=(ALL:ALL) ALL
 # %wheel ALL=(ALL:ALL) ALL
 
 ## Same thing without a password
-liveuser ALL=(ALL:ALL) NOPASSWD: ALL
+liveuser ALL=(ALL:ALL) SETENV: NOPASSWD: ALL
 
 ## Uncomment to allow members of group sudo to execute any command
 # %sudo	ALL=(ALL:ALL) ALL

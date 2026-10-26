@@ -87,3 +87,6 @@ calamares-extensions
 lsd-calamares-config
 kpmcore
 grub
+qt6-wayland
+xcb-util-cursor
+xorg-xhost
