@@ -41,6 +41,8 @@ lsb-release
 #
 # mirrorlist and keyrings
 #
+lsd-keyring
+lsd-mirrorlist
 archlinux-keyring
 archlinux-mirrorlist
 artix-mirrorlist

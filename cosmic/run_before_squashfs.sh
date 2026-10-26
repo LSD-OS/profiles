@@ -85,7 +85,7 @@ echo "##############################"
 
 rm -rf /etc/pacman.d/gnupg
 pacman-key --init
-pacman-key --populate archlinux artix
+pacman-key --populate archlinux artix lsd
 pacman -Sy
 
 rm /bin/sh

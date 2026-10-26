@@ -52,11 +52,14 @@ cosmic-text-editor
 cosmic-wallpapers
 cosmic-greeter-dinit
 lsd-welcome
+lsdfetch
 mesa
 
 #
 # mirrorlist and keyrings
 #
+lsd-keyring
+lsd-mirrorlist
 archlinux-keyring
 archlinux-mirrorlist
 artix-mirrorlist
