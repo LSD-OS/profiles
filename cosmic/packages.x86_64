@@ -78,3 +78,12 @@ networkmanager-dinit
 openssh-dinit
 #artix-live-dinit
 cryptsetup-dinit
+
+#
+# installer
+#
+calamares
+calamares-extensions
+lsd-calamares-config
+kpmcore
+grub
