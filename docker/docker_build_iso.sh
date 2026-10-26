@@ -3,14 +3,15 @@ set -euo pipefail
 
 PROFILE="${1:-cosmic}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 echo "==> Construindo imagem Docker de build (lsd-builder)..."
-sudo docker build -t lsd-builder -f "${SCRIPT_DIR}/Dockerfile.build" "${SCRIPT_DIR}"
+sudo docker build -t lsd-builder -f "${SCRIPT_DIR}/Dockerfile.build" "${ROOT_DIR}"
 
 echo "==> Compilando profile ${PROFILE} via container Docker..."
 # O mkarchiso necessita de privilégios para chroot/pacstrap e montagem de imagens
 sudo docker run --rm --privileged \
-    -v "${SCRIPT_DIR}:/build" \
+    -v "${ROOT_DIR}:/build" \
     -w "/build/profiles/${PROFILE}" \
     lsd-builder -c "
         set -e
