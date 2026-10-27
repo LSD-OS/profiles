@@ -5,9 +5,11 @@ base
 mkinitcpio
 mkinitcpio-archiso
 linux-firmware
-linux-headers
+linux-cachyos-headers
+linux-cachyos-lts-headers
 openssh
-linux
+linux-cachyos
+linux-cachyos-lts
 dinit
 less
 dash
