@@ -90,3 +90,5 @@ grub
 qt6-wayland
 xcb-util-cursor
 xorg-xhost
+btrfs-progs
+xfsprogs
