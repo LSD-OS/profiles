@@ -1,0 +1,33 @@
+#!/bin/bash
+
+build() {
+    add_module "loop?"
+    add_module "isofs?"
+    add_module "udf?"
+    add_module "exfat?"
+    add_module "vfat?"
+    add_module "fat?"
+    add_module "ntfs3?"
+    add_module "ext4?"
+    add_module "btrfs?"
+    add_module "xfs?"
+    add_module "nls_cp437?"
+    add_module "nls_iso8859-1?"
+    add_module "nls_utf8?"
+    add_module "nls_ascii?"
+
+    add_binary "losetup"
+    add_binary "blkid"
+    add_binary "mount"
+    add_binary "umount"
+    add_binary "readlink"
+
+    add_runscript
+}
+
+help() {
+    cat <<EOF
+This hook searches partitions for an ISO file matching the ISO's UUID/Label
+and attaches it as a loop device when booted from Ventoy or a loopback environment.
+EOF
+}

@@ -1,0 +1,182 @@
+#!/usr/bin/ash
+
+run_hook() {
+    # If the target device or UUID already exists as a block device (e.g. CD-ROM, VM, dd), do nothing
+    if [ -n "$archisosearchuuid" ] && [ -e "/dev/disk/by-uuid/$archisosearchuuid" ]; then
+        return 0
+    fi
+    if [ -n "$archisolabel" ] && [ -e "/dev/disk/by-label/$archisolabel" ]; then
+        return 0
+    fi
+    if [ -n "$archisodevice" ] && [ -e "$archisodevice" ]; then
+        return 0
+    fi
+
+    echo ":: Searching partitions for live ISO file (Ventoy/loopback mode)..."
+
+    # Make sure filesystem and NLS modules are loaded
+    for mod in loop isofs udf exfat vfat fat ntfs3 ext4 btrfs xfs nls_cp437 nls_iso8859-1 nls_utf8 nls_ascii; do
+        modprobe "$mod" 2>/dev/null
+    done
+
+    mkdir -p /run/archiso/iso_storage
+    mkdir -p /run/archiso/iso_verify
+
+    scanned_devs=" "
+    attempt=0
+
+    # Poll up to 15 seconds so slow USB mass storage controllers have time to enumerate
+    while [ "$attempt" -lt 15 ]; do
+        # Re-check if the device appeared natively via udev
+        if [ -n "$archisosearchuuid" ] && [ -e "/dev/disk/by-uuid/$archisosearchuuid" ]; then
+            return 0
+        fi
+        if [ -n "$archisolabel" ] && [ -e "/dev/disk/by-label/$archisolabel" ]; then
+            return 0
+        fi
+        if [ -n "$archisodevice" ] && [ -e "$archisodevice" ]; then
+            return 0
+        fi
+
+        # Collect candidate block devices currently present
+        candidate_devs=""
+        if [ -d /dev/disk/by-uuid ]; then
+            for d in /dev/disk/by-uuid/*; do
+                [ -e "$d" ] && candidate_devs="$candidate_devs $d"
+            done
+        fi
+        for d in /dev/sd[a-z][0-9]* /dev/nvme[0-9]*n[0-9]*p[0-9]* /dev/vd[a-z][0-9]* /dev/mmcblk[0-9]*p[0-9]* /dev/sr[0-9]*; do
+            [ -b "$d" ] && candidate_devs="$candidate_devs $d"
+        done
+
+        # Scan only newly discovered devices
+        for dev in $candidate_devs; do
+            real_dev=$(readlink -f "$dev" 2>/dev/null || echo "$dev")
+            [ -b "$real_dev" ] || continue
+
+            case "$scanned_devs" in
+                *" $real_dev "*) continue ;;
+            esac
+            scanned_devs="$scanned_devs $real_dev "
+
+            # Check if the partition/disk itself is the ISO filesystem before mounting
+            dev_blkid=$(blkid "$real_dev" 2>/dev/null)
+            if [ -n "$archisosearchuuid" ]; then
+                dev_uuid=$(blkid -s UUID -o value "$real_dev" 2>/dev/null)
+                case "$dev_blkid" in
+                    *UUID=\"$archisosearchuuid\"*) dev_uuid="$archisosearchuuid" ;;
+                esac
+                if [ "$dev_uuid" = "$archisosearchuuid" ]; then
+                    mkdir -p /dev/disk/by-uuid
+                    ln -sf "$real_dev" "/dev/disk/by-uuid/$archisosearchuuid"
+                    archisodevice="$real_dev"
+                    return 0
+                fi
+            fi
+
+            umount /run/archiso/iso_storage 2>/dev/null
+
+            # Attempt to mount read-only (with explicit fs fallbacks for initramfs environments)
+            if mount -o ro "$real_dev" /run/archiso/iso_storage 2>/dev/null || \
+               mount -t exfat -o ro "$real_dev" /run/archiso/iso_storage 2>/dev/null || \
+               mount -t ntfs3 -o ro "$real_dev" /run/archiso/iso_storage 2>/dev/null || \
+               mount -t vfat -o ro "$real_dev" /run/archiso/iso_storage 2>/dev/null || \
+               mount -t ext4 -o ro "$real_dev" /run/archiso/iso_storage 2>/dev/null; then
+
+                # Look for ISO files up to 2 directories deep
+                for isofile in \
+                    /run/archiso/iso_storage/*.iso /run/archiso/iso_storage/*.ISO \
+                    /run/archiso/iso_storage/*/*.iso /run/archiso/iso_storage/*/*.ISO \
+                    /run/archiso/iso_storage/*/*/*.iso /run/archiso/iso_storage/*/*/*.ISO; do
+                    [ -f "$isofile" ] || continue
+
+                    # Attach loop device (compatible with both util-linux and BusyBox losetup)
+                    loopdev=$(losetup -f 2>/dev/null)
+                    if [ -n "$loopdev" ] && losetup -r "$loopdev" "$isofile" 2>/dev/null; then
+                        matched=0
+                        loop_blkid=$(blkid "$loopdev" 2>/dev/null)
+
+                        # Match by UUID
+                        if [ -n "$archisosearchuuid" ]; then
+                            cur_uuid=$(blkid -s UUID -o value "$loopdev" 2>/dev/null)
+                            if [ "$cur_uuid" = "$archisosearchuuid" ]; then
+                                matched=1
+                            fi
+                            case "$loop_blkid" in
+                                *UUID=\"$archisosearchuuid\"*) matched=1 ;;
+                            esac
+                        fi
+
+                        # Match by Label
+                        if [ "$matched" -eq 0 ] && [ -n "$archisolabel" ]; then
+                            cur_label=$(blkid -s LABEL -o value "$loopdev" 2>/dev/null)
+                            if [ "$cur_label" = "$archisolabel" ]; then
+                                matched=1
+                            fi
+                            case "$loop_blkid" in
+                                *LABEL=\"$archisolabel\"*) matched=1 ;;
+                            esac
+                        fi
+
+                        # Match by internal verification file
+                        if [ "$matched" -eq 0 ] && [ -n "$archisosearchfilename" ]; then
+                            if mount -o ro "$loopdev" /run/archiso/iso_verify 2>/dev/null || \
+                               mount -t iso9660 -o ro "$loopdev" /run/archiso/iso_verify 2>/dev/null; then
+                                if [ -f "/run/archiso/iso_verify/$archisosearchfilename" ]; then
+                                    matched=1
+                                fi
+                                umount /run/archiso/iso_verify 2>/dev/null
+                            fi
+                        elif [ "$matched" -eq 0 ] && [ -n "$archisosearchuuid" ]; then
+                            if mount -o ro "$loopdev" /run/archiso/iso_verify 2>/dev/null || \
+                               mount -t iso9660 -o ro "$loopdev" /run/archiso/iso_verify 2>/dev/null; then
+                                if [ -f "/run/archiso/iso_verify/boot/${archisosearchuuid}.uuid" ]; then
+                                    matched=1
+                                fi
+                                umount /run/archiso/iso_verify 2>/dev/null
+                            fi
+                        fi
+
+                        if [ "$matched" -eq 1 ]; then
+                            echo ":: Found matching ISO: $isofile on $real_dev (mapped to $loopdev)"
+                            udevadm trigger --action=change "$loopdev" 2>/dev/null
+                            udevadm settle 2>/dev/null
+
+                            if [ -n "$archisosearchuuid" ]; then
+                                mkdir -p /dev/disk/by-uuid
+                                ln -sf "$loopdev" "/dev/disk/by-uuid/$archisosearchuuid"
+                            fi
+                            if [ -n "$archisolabel" ]; then
+                                mkdir -p /dev/disk/by-label
+                                ln -sf "$loopdev" "/dev/disk/by-label/$archisolabel"
+                            fi
+                            archisodevice="$loopdev"
+                            iso_loop_dev="$loopdev"
+
+                            # Keep /run/archiso/iso_storage mounted so the loopdev remains readable
+                            return 0
+                        fi
+
+                        losetup -d "$loopdev" 2>/dev/null
+                    fi
+                done
+                umount /run/archiso/iso_storage 2>/dev/null
+            fi
+        done
+
+        attempt=$((attempt + 1))
+        sleep 1
+        udevadm settle 2>/dev/null
+    done
+
+    echo ":: Auto-detection: no matching ISO file found."
+}
+
+run_latehook() {
+    # If booted with copytoram=y, archiso has already copied the rootfs to RAM and unmounted bootmnt,
+    # so we can detach the ISO loop device and unmount the underlying USB storage partition.
+    if [ "$copytoram" = "y" ] && [ -n "$iso_loop_dev" ]; then
+        losetup -d "$iso_loop_dev" 2>/dev/null
+        umount /run/archiso/iso_storage 2>/dev/null
+    fi
+}
