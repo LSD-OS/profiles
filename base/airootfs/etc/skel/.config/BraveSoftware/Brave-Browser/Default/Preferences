@@ -1,0 +1,14 @@
+{
+   "browser": {
+      "has_seen_welcome_page": true,
+      "check_default_browser": false
+   },
+   "brave": {
+      "rewards": {
+         "enabled": false
+      },
+      "wallet": {
+         "enabled": false
+      }
+   }
+}

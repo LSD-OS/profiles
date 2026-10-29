@@ -137,6 +137,15 @@ cat << 'FAV_EOF' > /home/liveuser/.config/cosmic/com.system76.CosmicAppList/v1/f
 ]
 FAV_EOF
 cp -fv /home/liveuser/.config/cosmic/com.system76.CosmicAppList/v1/favorites /etc/skel/.config/cosmic/com.system76.CosmicAppList/v1/favorites
+
+# Copia configuracao predefinida do Brave (pula brave://welcome e define como padrao) para o liveuser
+if [ -d /etc/skel/.config/BraveSoftware ]; then
+    mkdir -p /home/liveuser/.config
+    cp -r /etc/skel/.config/BraveSoftware /home/liveuser/.config/
+fi
+if [ -f /etc/skel/.config/mimeapps.list ]; then
+    cp -fv /etc/skel/.config/mimeapps.list /home/liveuser/.config/
+fi
 chown -R liveuser:liveuser /home/liveuser/.config
 
 usermod -aG users,adm,lp,power,video,network,storage,wheel,audio,sys,optical,scanner,rfkill,uucp liveuser
