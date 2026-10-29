@@ -927,10 +927,20 @@ _make_bootmode_uefi.limine() {
         cp -- "${pacstrap_dir}/usr/share/limine/BOOT${uefi_arch[$arch]}.EFI" "${work_dir}/${target_efi}"
     fi
 
+    local _available_ucodes=()
+    if (( need_external_ucodes )); then
+        for _file in "${ucodes[@]}"; do
+            if [[ -e "${pacstrap_dir}/boot/${_file}" ]]; then
+                _available_ucodes+=("${pacstrap_dir}/boot/${_file}")
+            fi
+        done
+    fi
+
     efiboot_files+=("${work_dir}/${target_efi}"
                     "${work_dir}/limine/"
                     "${pacstrap_dir}/boot/vmlinuz-"*
-                    "${pacstrap_dir}/boot/initramfs-"*".img")
+                    "${pacstrap_dir}/boot/initramfs-"*".img"
+                    "${_available_ucodes[@]}")
 
     # Mixed-mode booting on x86_64 systems with IA32 UEFI
     if [[ "$arch" == 'x86_64' && -f "${pacstrap_dir}/usr/share/limine/BOOTIA32.EFI" ]]; then
