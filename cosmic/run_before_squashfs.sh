@@ -116,6 +116,29 @@ tree /etc/dinit.d
 echo "============================================"
 echo
 
+# Substitui atalho padrao do firefox pelo brave nos favoritos do COSMIC
+FAV_SYSTEM="/usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+if [ -f "$FAV_SYSTEM" ]; then
+    sed -i 's/"firefox"/"brave-browser"/' "$FAV_SYSTEM"
+    echo ">>> Firefox substituido pelo Brave em $FAV_SYSTEM"
+fi
+
+# Garante que o usuario liveuser tambem receba a configuracao com o Brave
+mkdir -p /home/liveuser/.config/cosmic/com.system76.CosmicAppList/v1
+mkdir -p /etc/skel/.config/cosmic/com.system76.CosmicAppList/v1
+cat << 'FAV_EOF' > /home/liveuser/.config/cosmic/com.system76.CosmicAppList/v1/favorites
+[
+    "brave-browser",
+    "com.system76.CosmicFiles",
+    "com.system76.CosmicEdit",
+    "com.system76.CosmicTerm",
+    "com.system76.CosmicStore",
+    "com.system76.CosmicSettings",
+]
+FAV_EOF
+cp -fv /home/liveuser/.config/cosmic/com.system76.CosmicAppList/v1/favorites /etc/skel/.config/cosmic/com.system76.CosmicAppList/v1/favorites
+chown -R liveuser:liveuser /home/liveuser/.config
+
 usermod -aG users,adm,lp,power,video,network,storage,wheel,audio,sys,optical,scanner,rfkill,uucp liveuser
 
 echo "##############################"
