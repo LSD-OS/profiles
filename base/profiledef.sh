@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 iso_name="LSD_OS"
-iso_label="BASE_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
+iso_label="COSMIC_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
 iso_publisher="LSD-OS"
 iso_application="LSD-OS"
 iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
@@ -16,4 +16,5 @@ file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/gshadow"]="0:0:400"
   ["/etc/sudoers"]="0:0:400"
+  ["/usr/lib/dinit/zram-service"]="0:0:755"
 )
