@@ -94,7 +94,7 @@ ln -sfv /bin/dash /bin/sh
 # Os serviços cosmic-greeter e cosmic-greeter-daemon vêm do pacote
 # cosmic-greeter-dinit (repo [lsd]) e o lsd-welcome do pacote lsd-welcome
 # (repo [lsd]). Aqui só habilitamos.
-enable_dinit_services dbus elogind chrony lsd-welcome cosmic-greeter cosmic-greeter-daemon NetworkManager
+enable_dinit_services dbus elogind chrony zram lsd-welcome cosmic-greeter cosmic-greeter-daemon NetworkManager
 
 # ISO live não tem primeiro-boot: o initial setup do COSMIC não tem o que
 # fazer (o lsd-welcome cobre idioma/teclado/timezone; o instalador vem

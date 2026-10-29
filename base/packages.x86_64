@@ -5,6 +5,8 @@ base
 mkinitcpio
 mkinitcpio-archiso
 linux-firmware
+intel-ucode
+amd-ucode
 linux-cachyos-headers
 linux-cachyos-lts-headers
 openssh

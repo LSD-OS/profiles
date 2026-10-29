@@ -5,6 +5,8 @@ base
 mkinitcpio
 mkinitcpio-archiso
 linux-firmware
+intel-ucode
+amd-ucode
 linux-cachyos-headers
 linux-cachyos-lts-headers
 openssh
@@ -56,6 +58,10 @@ cosmic-greeter-dinit
 lsd-welcome
 lsdfetch
 mesa
+vulkan-intel
+intel-media-driver
+libva-utils
+brave-bin
 
 #
 # mirrorlist and keyrings
