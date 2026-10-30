@@ -41,6 +41,7 @@ limine
 os-prober
 device-mapper
 lsb-release
+xdg-user-dirs
 
 #
 # mirrorlist and keyrings

@@ -62,6 +62,7 @@ vulkan-intel
 intel-media-driver
 libva-utils
 brave-bin
+xdg-user-dirs
 
 #
 # mirrorlist and keyrings
