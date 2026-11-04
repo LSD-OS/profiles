@@ -18,6 +18,7 @@ lsdfetch
 #
 cosmic
 dconf
+flatpak
 cosmic-monitor
 cosmic-player
 cosmic-store
