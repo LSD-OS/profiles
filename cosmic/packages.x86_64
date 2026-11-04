@@ -20,6 +20,8 @@ cosmic
 dconf
 cosmic-monitor
 cosmic-player
+cosmic-store
+cosmic-viewer
 cosmic-terminal
 cosmic-text-editor
 cosmic-wallpapers
@@ -27,8 +29,11 @@ cosmic-greeter-dinit
 mesa
 vulkan-intel
 intel-media-driver
+vulkan-radeon
+libva-mesa-driver
 libva-utils
 brave-bin
+visual-studio-code-bin
 
 #
 # installer & live environment
@@ -42,3 +47,4 @@ grub
 qt6-wayland
 xcb-util-cursor
 xorg-xhost
+dex

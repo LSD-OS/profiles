@@ -59,6 +59,26 @@ do_welcome() {
         echo ">>> Autologin do liveuser no greetd (live-only):"
         tail -4 "${airootfs}/etc/greetd/cosmic-greeter.toml"
     fi
+
+    # Hook do dex para processamento de XDG autostart no start-cosmic:
+    # Como o LSD_OS usa dinit e não systemd user session, o cosmic-session
+    # não dispara o target xdg-desktop-autostart. O dex processa os desktop
+    # files em /etc/xdg/autostart e ~/.config/autostart (como o calamares).
+    if [ -f "${airootfs}/usr/bin/start-cosmic" ] && ! grep -q 'dex -a' "${airootfs}/usr/bin/start-cosmic"; then
+        sed -i '/^# Run cosmic-session/i \
+# Autostart XDG via dex (dinit / non-systemd)\
+(\
+    while [ -z "$WAYLAND_DISPLAY" ]; do\
+        sleep 0.5\
+    done\
+    sleep 2\
+    if command -v dex >/dev/null 2>&1; then\
+        dex -a -s /etc/xdg/autostart/:~/.config/autostart/ >/dev/null 2>&1 &\
+    fi\
+) &\
+' "${airootfs}/usr/bin/start-cosmic"
+        echo ">>> Hook do dex adicionado ao start-cosmic"
+    fi
 }
 
 do_merge() {
@@ -115,6 +135,12 @@ echo "============================================"
 tree /etc/dinit.d
 echo "============================================"
 echo
+
+# Adiciona o repositorio Flathub ao Flatpak para a cosmic-store
+if command -v flatpak >/dev/null 2>&1; then
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    echo ">>> Repositorio Flathub adicionado ao Flatpak"
+fi
 
 # Substitui atalho padrao do firefox pelo brave nos favoritos do COSMIC
 FAV_SYSTEM="/usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
