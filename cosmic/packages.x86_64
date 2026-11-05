@@ -27,12 +27,18 @@ cosmic-terminal
 cosmic-text-editor
 cosmic-wallpapers
 cosmic-greeter-dinit
+power-profiles-daemon
+power-profiles-daemon-dinit
 mesa
+vulkan-icd-loader
 vulkan-intel
 intel-media-driver
 vulkan-radeon
 libva-mesa-driver
 libva-utils
+lib32-vulkan-icd-loader
+lib32-vulkan-intel
+lib32-vulkan-radeon
 brave-bin
 visual-studio-code-bin
 
