@@ -12,6 +12,18 @@ run_hook() {
         return 0
     fi
 
+    # Ventoy (normal mode) injects its own initramfs (/ventoy) and patches /init to run
+    # /ventoy/hook/arch/ventoy-disk.sh right before the mount handler. That script builds a
+    # device-mapper linear target (/dev/mapper/ventoy) directly on top of the USB disk, which
+    # requires an exclusive claim on the disk. If we mount the Ventoy data partition here to
+    # loop-mount the ISO file, dmsetup fails with "Device lookup failed (-EBUSY)" and
+    # ventoy-disk.sh then loops forever waiting for the dm device (boot hangs).
+    # So when Ventoy is driving the boot, stay out of the way and let it expose the ISO.
+    if [ -d /ventoy ] || grep -q 'ventoy-disk.sh' /init 2>/dev/null; then
+        echo ":: Ventoy detected, letting Ventoy map the ISO (skipping loopback search)"
+        return 0
+    fi
+
     echo ":: Searching partitions for live ISO file (Ventoy/loopback mode)..."
 
     # Make sure filesystem and NLS modules are loaded
