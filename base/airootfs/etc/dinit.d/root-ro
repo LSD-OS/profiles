@@ -1,3 +1,0 @@
-type    = scripted
-command = /bin/mount --make-rshared /
-restart = false

@@ -1,4 +1,0 @@
-type        = scripted
-command     = /bin/true
-restart     = false
-options     = starts-rwfs

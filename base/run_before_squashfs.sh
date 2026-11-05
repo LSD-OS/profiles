@@ -14,14 +14,14 @@ echo "${lsd_os_version}" > "${script_path}/${work_dir}/x86_64/airootfs/etc/lsd-v
 
 arch_chroot "$(cat << 'EOF'
 
-enable_dinit_services() {
-    mkdir -p /etc/dinit.d/boot.d
-    
+enable_openrc_services() {
+    mkdir -p /etc/runlevels/default
+
     for s in "$@"; do
-        if [ -e "/etc/dinit.d/$s" ]; then
-            ln -sfv "../$s" "/etc/dinit.d/boot.d/$s"
+        if [ -e "/etc/init.d/$s" ]; then
+            rc-update add "$s" default 2>/dev/null || ln -sfv "/etc/init.d/$s" "/etc/runlevels/default/$s"
         else
-            echo "Aviso: Serviço $s não encontrado em /etc/dinit.d/"
+            echo "Aviso: Serviço $s não encontrado em /etc/init.d/"
         fi
     done
 }
@@ -38,11 +38,11 @@ pacman -Sy
 rm /bin/sh
 ln -sfv /bin/dash /bin/sh
 
-enable_dinit_services chrony NetworkManager
+enable_openrc_services chrony chronyd NetworkManager
 
 echo
 echo "============================================"
-tree /etc/dinit.d
+tree /etc/runlevels
 echo "============================================"
 echo
 

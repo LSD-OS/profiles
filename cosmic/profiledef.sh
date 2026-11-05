@@ -16,5 +16,6 @@ file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/gshadow"]="0:0:400"
   ["/etc/sudoers"]="0:0:400"
-  ["/usr/lib/dinit/zram-service"]="0:0:755"
+  ["/etc/init.d/zram"]="0:0:755"
+  ["/usr/lib/openrc/zram-service"]="0:0:755"
 )

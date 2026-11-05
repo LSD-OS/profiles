@@ -26,9 +26,9 @@ cosmic-viewer
 cosmic-terminal
 cosmic-text-editor
 cosmic-wallpapers
-cosmic-greeter-dinit
+cosmic-greeter-openrc
 power-profiles-daemon
-power-profiles-daemon-dinit
+power-profiles-daemon-openrc
 mesa
 vulkan-icd-loader
 vulkan-intel
@@ -45,6 +45,7 @@ visual-studio-code-bin
 #
 # installer & live environment
 #
+artix-live-openrc
 lsd-welcome
 calamares
 calamares-extensions

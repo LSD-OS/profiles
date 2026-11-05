@@ -11,6 +11,6 @@ nano
 rsync
 
 #
-# dinit live service
+# openrc live service
 #
-artix-live-dinit
+artix-live-openrc

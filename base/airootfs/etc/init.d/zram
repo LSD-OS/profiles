@@ -1,0 +1,20 @@
+#!/usr/bin/openrc-run
+
+description="Configura swap em ZRAM (50% da RAM)"
+
+depend() {
+    need localmount
+    before swap
+}
+
+start() {
+    ebegin "Ativando swap em ZRAM"
+    /usr/lib/openrc/zram-service start
+    eend $?
+}
+
+stop() {
+    ebegin "Desativando swap em ZRAM"
+    /usr/lib/openrc/zram-service stop
+    eend $?
+}

@@ -10,18 +10,18 @@ arch_chroot() {
 }
 
 # Gates live-only do lsd-welcome: o pacote lsd-welcome (repo [lsd]) já
-# instala o script (/usr/bin/lsd-welcome) e o serviço (/etc/dinit.d/
+# instala o script (/usr/bin/lsd-welcome) e o serviço (/etc/init.d/
 # lsd-welcome) via packages.x86_64. Aqui ficam só as alterações em
 # arquivos DE OUTROS PACOTES, feitas no airootfs da build — o sistema
 # instalado não herda nada (o gate bloquearia o greeter em todo boot).
 do_welcome() {
     # O greeter só sobe depois do welcome terminar (ou falhar). Anexado ao
-    # arquivo do pacote cosmic-greeter-dinit apenas no airootfs da build:
+    # depend do pacote cosmic-greeter-openrc apenas no airootfs da build:
     # no sistema instalado o serviço vem limpo do pacote, sem este gate.
-    if ! grep -q '^waits-for *= *lsd-welcome' "${airootfs}/etc/dinit.d/cosmic-greeter"; then
-        printf 'waits-for       = lsd-welcome\n' >> "${airootfs}/etc/dinit.d/cosmic-greeter"
+    if [ -f "${airootfs}/etc/init.d/cosmic-greeter" ] && ! grep -q 'need.*lsd-welcome' "${airootfs}/etc/init.d/cosmic-greeter"; then
+        sed -i '/need dbus/s/$/ lsd-welcome/' "${airootfs}/etc/init.d/cosmic-greeter"
         echo ">>> cosmic-greeter agora espera o lsd-welcome:"
-        tail -3 "${airootfs}/etc/dinit.d/cosmic-greeter"
+        grep -n "need.*lsd-welcome" "${airootfs}/etc/init.d/cosmic-greeter"
     fi
 
     # Idioma escolhido no welcome -> greeter: o wrapper cosmic-greeter-start
@@ -35,17 +35,16 @@ do_welcome() {
         cat "${airootfs}/usr/bin/cosmic-greeter-start"
     fi
 
-    # tty1 é do lsd-welcome na live: sem o getty@tty1, o agetty dinâmico
-    # (ACTIVE_CONSOLES em console.conf) pula a tty1 — o script /usr/lib/
-    # dinit/agetty só acorda gettys cujo serviço existe em /etc/dinit.d
-    # ([ -f ... ] || continue) — e nenhum prompt disputa o teclado com a
-    # TUI. A tty1 fica com o serviço lsd-welcome, que a abre direto. As
-    # tty2-6 continuam disponíveis (Alt+F2...). Live-only: arquivo
-    # removido só no airootfs da build, o sistema instalado não herda.
-    rm -fv "${airootfs}/etc/dinit.d/getty@tty1"
+    # tty1 é do lsd-welcome na live: desativa o agetty no tty1 para que nenhum
+    # prompt dispute o teclado com a TUI do welcome. A tty1 fica com o serviço
+    # lsd-welcome. As tty2-6 continuam disponíveis. O Calamares reativa no target instalado.
+    if [ -f "${airootfs}/etc/inittab" ]; then
+        sed -i 's|^\(c1:.*tty1.*\)|#\1|' "${airootfs}/etc/inittab"
+    fi
+    rm -fv "${airootfs}/etc/runlevels/default/agetty.tty1" "${airootfs}/etc/runlevels/boot/agetty.tty1"
 
     # Autologin do liveuser (live-only): "Iniciar ISO live" sai 0, o gate
-    # (waits-for = lsd-welcome acima) solta o greetd e o primeiro run dele
+    # (need lsd-welcome acima) solta o greetd e o primeiro run dele
     # sobe a sessão direto via [initial_session] — sem greeter pedindo
     # login (ISO live é single-user, igual às lives de outras distros).
     # Depois de um logout o greeter COSMIC assume (o runfile /run/greetd.run
@@ -61,12 +60,12 @@ do_welcome() {
     fi
 
     # Hook do dex para processamento de XDG autostart no start-cosmic:
-    # Como o LSD_OS usa dinit e não systemd user session, o cosmic-session
+    # Como o LSD_OS usa openrc e não systemd user session, o cosmic-session
     # não dispara o target xdg-desktop-autostart. O dex processa os desktop
     # files em /etc/xdg/autostart e ~/.config/autostart (como o calamares).
     if [ -f "${airootfs}/usr/bin/start-cosmic" ] && ! grep -q 'dex -a' "${airootfs}/usr/bin/start-cosmic"; then
         sed -i '/^# Run cosmic-session/i \
-# Autostart XDG via dex (dinit / non-systemd)\
+# Autostart XDG via dex (openrc / non-systemd)\
 (\
     while [ -z "$WAYLAND_DISPLAY" ]; do\
         sleep 0.5\
@@ -87,14 +86,14 @@ echo "${lsd_os_version}" > "${airootfs}/etc/lsd-version"
 
 arch_chroot "$(cat << 'EOF'
 
-enable_dinit_services() {
-    mkdir -p /etc/dinit.d/boot.d
+enable_openrc_services() {
+    mkdir -p /etc/runlevels/default
 
     for s in "$@"; do
-        if [ -e "/etc/dinit.d/$s" ]; then
-            ln -sfv "../$s" "/etc/dinit.d/boot.d/$s"
+        if [ -e "/etc/init.d/$s" ]; then
+            rc-update add "$s" default 2>/dev/null || ln -sfv "/etc/init.d/$s" "/etc/runlevels/default/$s"
         else
-            echo "Aviso: Serviço $s não encontrado em /etc/dinit.d/"
+            echo "Aviso: Serviço $s não encontrado em /etc/init.d/"
         fi
     done
 }
@@ -112,9 +111,9 @@ rm /bin/sh
 ln -sfv /bin/dash /bin/sh
 
 # Os serviços cosmic-greeter e cosmic-greeter-daemon vêm do pacote
-# cosmic-greeter-dinit (repo [lsd]) e o lsd-welcome do pacote lsd-welcome
+# cosmic-greeter-openrc (repo [lsd]) e o lsd-welcome do pacote lsd-welcome
 # (repo [lsd]). Aqui só habilitamos.
-enable_dinit_services dbus elogind chrony zram lsd-welcome cosmic-greeter cosmic-greeter-daemon NetworkManager power-profiles-daemon
+enable_openrc_services dbus elogind chrony chronyd zram lsd-welcome cosmic-greeter cosmic-greeter-daemon NetworkManager power-profiles-daemon
 
 # ISO live não tem primeiro-boot: o initial setup do COSMIC não tem o que
 # fazer (o lsd-welcome cobre idioma/teclado/timezone; o instalador vem
@@ -132,7 +131,7 @@ fi
 
 echo
 echo "============================================"
-tree /etc/dinit.d
+tree /etc/runlevels
 echo "============================================"
 echo
 
