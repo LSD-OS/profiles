@@ -59,65 +59,6 @@ do_welcome() {
         tail -4 "${airootfs}/etc/greetd/cosmic-greeter.toml"
     fi
 
-    # Sincroniza o wrapper lsd-calamares e sudoers mais recentes para o airootfs
-    if [ -f "${script_path}/../../packages/lsd-calamares-config/usr/bin/lsd-calamares" ]; then
-        install -m 755 "${script_path}/../../packages/lsd-calamares-config/usr/bin/lsd-calamares" "${airootfs}/usr/bin/lsd-calamares"
-        echo ">>> lsd-calamares sincronizado para o airootfs"
-    fi
-    if [ -f "${script_path}/../../packages/lsd-calamares-config/etc/sudoers.d/calamares" ]; then
-        install -m 440 "${script_path}/../../packages/lsd-calamares-config/etc/sudoers.d/calamares" "${airootfs}/etc/sudoers.d/calamares"
-        echo ">>> sudoers.d/calamares sincronizado para o airootfs"
-    fi
-
-    # Hook do dex para processamento de XDG autostart no start-cosmic:
-    # Como o LSD_OS usa openrc e não systemd user session, o cosmic-session
-    # não dispara o target xdg-desktop-autostart. O dex processa os desktop
-    # files em /etc/xdg/autostart e ~/.config/autostart (como o calamares).
-    # Exportamos o D-Bus de sessão antes para que os processos em background
-    # compartilhem do mesmo barramento que a sessão COSMIC.
-    if [ -f "${airootfs}/usr/bin/start-cosmic" ] && ! grep -q 'dex -a' "${airootfs}/usr/bin/start-cosmic"; then
-        sed -i '/^# Run cosmic-session/i \
-# Garante barramento D-Bus de sessao compartilhado (openrc / non-systemd)\
-if [ -z "${DBUS_SESSION_BUS_ADDRESS}" ]; then\
-    if [ -S "${XDG_RUNTIME_DIR}/bus" ]; then\
-        export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"\
-    elif command -v dbus-launch >/dev/null 2>&1; then\
-        eval "$(dbus-launch --sh-syntax --exit-with-session)"\
-    fi\
-fi\
-\
-# Autostart XDG via dex (openrc / non-systemd)\
-(\
-    RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"\
-    for _ in $(seq 1 100); do\
-        if [ -S "$RUNTIME_DIR/wayland-0" ]; then\
-            export WAYLAND_DISPLAY="wayland-0"\
-            break\
-        fi\
-        W_SOCK=$(ls "$RUNTIME_DIR"/wayland-* 2>/dev/null | head -n 1)\
-        if [ -n "$W_SOCK" ] && [ -S "$W_SOCK" ]; then\
-            export WAYLAND_DISPLAY="${W_SOCK##*/}"\
-            break\
-        fi\
-        sleep 0.1\
-    done\
-    [ -z "$WAYLAND_DISPLAY" ] && export WAYLAND_DISPLAY="wayland-0"\
-\
-    for _ in $(seq 1 30); do\
-        [ -S /tmp/.X11-unix/X0 ] && export DISPLAY=":0" && break\
-        sleep 0.1\
-    done\
-    export DISPLAY="${DISPLAY:-:0}"\
-\
-    sleep 0.5\
-    if command -v dex >/dev/null 2>&1; then\
-        dex -a -s /etc/xdg/autostart/:~/.config/autostart/ >/dev/null 2>&1 &\
-    fi\
-) &\
-' "${airootfs}/usr/bin/start-cosmic"
-        echo ">>> Hook do dex adicionado ao start-cosmic"
-    fi
-
     # Limpeza da tela inicial (Desktop) e do menu de aplicativos:
     # 1. Desativa live-session.desktop e desktop-items (evita criar README.txt e atalho na área de trabalho)
     rm -fv "${airootfs}/etc/skel/.config/autostart/live-session.desktop"
