@@ -10,6 +10,7 @@ RUN pacman -Sy --noconfirm \
         erofs-utils \
         mtools \
         libisoburn \
+        limine \
         git \
         pv && \
     rm -rf /var/cache/pacman/pkg/*

@@ -906,11 +906,13 @@ _make_bootmode_uefi-ia32.systemd-boot.esp() {
     return 1
 }
 
-# Prepare Limine for UEFI booting
+# Prepare Limine for BIOS and UEFI booting
 _make_bootmode_uefi.limine() {
-    _msg_info "Setting up Limine for UEFI booting..."
+    _msg_info "Setting up Limine for BIOS and UEFI booting..."
 
     install -d -m 0755 -- "${work_dir}/limine"
+    install -d -m 0755 -- "${isofs_dir}/EFI/BOOT"
+    install -d -m 0755 -- "${isofs_dir}/boot/limine"
 
     # Prepare configuration files
     sed "s|%ARCHISO_LABEL%|${iso_label}|g;
@@ -922,48 +924,31 @@ _make_bootmode_uefi.limine() {
     # Locate and copy Limine EFI binaries
     local target_efi="BOOT${uefi_arch[$arch]^^}.EFI"
     if [[ -f "${pacstrap_dir}/usr/share/limine/${target_efi}" ]]; then
-        cp -- "${pacstrap_dir}/usr/share/limine/${target_efi}" "${work_dir}/${target_efi}"
+        install -m 0644 -- "${pacstrap_dir}/usr/share/limine/${target_efi}" "${isofs_dir}/EFI/BOOT/${target_efi}"
     elif [[ -f "${pacstrap_dir}/usr/share/limine/BOOT${uefi_arch[$arch]}.EFI" ]]; then
-        cp -- "${pacstrap_dir}/usr/share/limine/BOOT${uefi_arch[$arch]}.EFI" "${work_dir}/${target_efi}"
+        install -m 0644 -- "${pacstrap_dir}/usr/share/limine/BOOT${uefi_arch[$arch]}.EFI" "${isofs_dir}/EFI/BOOT/${target_efi}"
     fi
-
-    local _available_ucodes=()
-    if (( need_external_ucodes )); then
-        for _file in "${ucodes[@]}"; do
-            if [[ -e "${pacstrap_dir}/boot/${_file}" ]]; then
-                _available_ucodes+=("${pacstrap_dir}/boot/${_file}")
-            fi
-        done
-    fi
-
-    efiboot_files+=("${work_dir}/${target_efi}"
-                    "${work_dir}/limine/"
-                    "${pacstrap_dir}/boot/vmlinuz-"*
-                    "${pacstrap_dir}/boot/initramfs-"*".img"
-                    "${_available_ucodes[@]}")
 
     # Mixed-mode booting on x86_64 systems with IA32 UEFI
     if [[ "$arch" == 'x86_64' && -f "${pacstrap_dir}/usr/share/limine/BOOTIA32.EFI" ]]; then
-        cp -- "${pacstrap_dir}/usr/share/limine/BOOTIA32.EFI" "${work_dir}/BOOTIA32.EFI"
-        efiboot_files+=("${work_dir}/BOOTIA32.EFI")
+        install -m 0644 -- "${pacstrap_dir}/usr/share/limine/BOOTIA32.EFI" "${isofs_dir}/EFI/BOOT/BOOTIA32.EFI"
     fi
 
-    # Create a FAT image for the EFI system partition
-    _make_efibootimg
+    # Copy Limine BIOS and UEFI CD/ESP boot images
+    local _limine_file
+    for _limine_file in limine-bios.sys limine-bios-cd.bin limine-uefi-cd.bin; do
+        if [[ -f "${pacstrap_dir}/usr/share/limine/${_limine_file}" ]]; then
+            install -m 0644 -- "${pacstrap_dir}/usr/share/limine/${_limine_file}" "${isofs_dir}/boot/limine/${_limine_file}"
+        fi
+    done
 
-    # Install to EFI system partition
-    install -d -m 0755 -- "${isofs_dir}/EFI/BOOT"
-    mcopy -i "${efibootimg}" "${work_dir}/${target_efi}" "::/EFI/BOOT/${target_efi}"
-    install -m 0644 -- "${work_dir}/${target_efi}" "${isofs_dir}/EFI/BOOT/${target_efi}"
-
-    if [[ "$arch" == 'x86_64' && -f "${work_dir}/BOOTIA32.EFI" ]]; then
-        mcopy -i "${efibootimg}" "${work_dir}/BOOTIA32.EFI" "::/EFI/BOOT/BOOTIA32.EFI"
-        install -m 0644 -- "${work_dir}/BOOTIA32.EFI" "${isofs_dir}/EFI/BOOT/BOOTIA32.EFI"
+    # Cache limine binary for post-ISO bios-install step
+    if [[ -x "${pacstrap_dir}/usr/bin/limine" ]]; then
+        install -m 0755 -- "${pacstrap_dir}/usr/bin/limine" "${work_dir}/limine/limine-bin"
     fi
 
-    # Install limine.conf to both ESP (::/EFI/BOOT/limine.conf and ::/limine.conf) and ISO9660
-    mcopy -i "${efibootimg}" "${work_dir}/limine/limine.conf" "::/EFI/BOOT/limine.conf"
-    mcopy -i "${efibootimg}" "${work_dir}/limine/limine.conf" "::/limine.conf"
+    # Install limine.conf to ISO9660 locations (/boot/limine/limine.conf, /EFI/BOOT/limine.conf, /limine.conf)
+    install -m 0644 -- "${work_dir}/limine/limine.conf" "${isofs_dir}/boot/limine/limine.conf"
     install -m 0644 -- "${work_dir}/limine/limine.conf" "${isofs_dir}/EFI/BOOT/limine.conf"
     install -m 0644 -- "${work_dir}/limine/limine.conf" "${isofs_dir}/limine.conf"
 
@@ -972,10 +957,7 @@ _make_bootmode_uefi.limine() {
         cp -r --remove-destination -- "${profile}/limine/"!(*.conf) "${isofs_dir}/"
     fi
 
-    # Copy kernel and initramfs to FAT image
-    _run_once _make_boot_on_fat
-
-    _msg_info "Done! Limine set up for UEFI booting successfully."
+    _msg_info "Done! Limine set up for BIOS and UEFI booting successfully."
 }
 
 _validate_requirements_bootmode_bios.syslinux() {
@@ -1521,9 +1503,19 @@ _add_xorrisofs_options_uefi.grub() {
     _add_common_xorrisofs_options_uefi
 }
 
-# Limine in an attached EFI system partition and El Torito
+# Limine hybrid BIOS and UEFI in ISO 9660, El Torito, and GPT/MBR ESP
 _add_xorrisofs_options_uefi.limine() {
-    _add_common_xorrisofs_options_uefi
+    xorrisofs_options+=(
+        '-b' 'boot/limine/limine-bios-cd.bin'
+        '-no-emul-boot'
+        '-boot-load-size' '4'
+        '-boot-info-table'
+        '-eltorito-catalog' 'boot/limine/boot.cat'
+        '--efi-boot' 'boot/limine/limine-uefi-cd.bin'
+        '-efi-boot-part'
+        '--efi-boot-image'
+        '--protective-msdos-label'
+    )
 }
 
 # Build bootstrap image
@@ -1597,6 +1589,19 @@ _build_iso_image() {
         "${xorrisofs_options[@]}" \
         -output "${out_dir}/${image_name}" \
         "${isofs_dir}/"
+
+    # Embed Limine BIOS stage 1/2 for hybrid BIOS USB/HDD booting
+    # shellcheck disable=SC2076
+    if [[ " ${bootmodes[*]} " =~ ' uefi.limine ' ]]; then
+        if [[ -x "${work_dir}/limine/limine-bin" ]]; then
+            _msg_info "Installing Limine BIOS stage to ISO image..."
+            "${work_dir}/limine/limine-bin" bios-install "${out_dir}/${image_name}"
+        elif command -v limine &>/dev/null; then
+            _msg_info "Installing Limine BIOS stage to ISO image..."
+            limine bios-install "${out_dir}/${image_name}"
+        fi
+    fi
+
     _msg_info "Done!"
     du -h -- "${out_dir}/${image_name}"
 }
