@@ -43,19 +43,23 @@ do_welcome() {
     fi
     rm -fv "${airootfs}/etc/runlevels/default/agetty.tty1" "${airootfs}/etc/runlevels/boot/agetty.tty1"
 
+    # Instala o wrapper dedicado start-cosmic-live com autostart do Calamares (live-only)
+    if [ -f "${script_path}/start-cosmic-live" ]; then
+        install -m 755 "${script_path}/start-cosmic-live" "${airootfs}/usr/bin/start-cosmic-live"
+        echo ">>> start-cosmic-live instalado em ${airootfs}/usr/bin/start-cosmic-live"
+    fi
+
     # Autologin do liveuser (live-only): "Iniciar ISO live" sai 0, o gate
     # (need lsd-welcome acima) solta o greetd e o primeiro run dele
     # sobe a sessão direto via [initial_session] — sem greeter pedindo
     # login (ISO live é single-user, igual às lives de outras distros).
-    # Depois de um logout o greeter COSMIC assume (o runfile /run/greetd.run
-    # marca o primeiro run; ver context.rs do greetd). O command é o wrapper
-    # start-cosmic (pacote cosmic-session), o mesmo Exec do wayland-sessions/
-    # cosmic.desktop: o cosmic-session puro morre no início (exige D-Bus de
-    # sessão; o wrapper envolve num dbus-run-session e define o env).
-    if [ -f "${airootfs}/etc/greetd/cosmic-greeter.toml" ] && ! grep -q 'initial_session' "${airootfs}/etc/greetd/cosmic-greeter.toml"; then
-        printf '\n[initial_session]\ncommand = "/usr/bin/start-cosmic"\nuser = "liveuser"\n' \
+    # O command aponta para o wrapper start-cosmic-live, que sobe o COSMIC
+    # e dispara o Calamares assim que o compositor Wayland estiver pronto.
+    if [ -f "${airootfs}/etc/greetd/cosmic-greeter.toml" ]; then
+        sed -i '/\[initial_session\]/,+2d' "${airootfs}/etc/greetd/cosmic-greeter.toml"
+        printf '\n[initial_session]\ncommand = "/usr/bin/start-cosmic-live"\nuser = "liveuser"\n' \
             >> "${airootfs}/etc/greetd/cosmic-greeter.toml"
-        echo ">>> Autologin do liveuser no greetd (live-only):"
+        echo ">>> Autologin do liveuser no greetd configurado com start-cosmic-live (live-only):"
         tail -4 "${airootfs}/etc/greetd/cosmic-greeter.toml"
     fi
 

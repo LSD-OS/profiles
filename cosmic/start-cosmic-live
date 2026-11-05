@@ -1,0 +1,51 @@
+#!/bin/sh
+# LSD_OS - COSMIC Live Session Wrapper with Calamares Autostart
+
+(
+    LOG="/tmp/calamares-autostart.log"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iniciando monitoramento para autostart do Calamares..." > "$LOG"
+
+    RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Diretório de runtime: $RUNTIME_DIR" >> "$LOG"
+
+    # 1. Aguarda a inicialização do socket Wayland pelo cosmic-comp (timeout de 30s)
+    WAYLAND_READY=0
+    for _ in $(seq 1 150); do
+        if [ -S "$RUNTIME_DIR/wayland-0" ]; then
+            export WAYLAND_DISPLAY="wayland-0"
+            WAYLAND_READY=1
+            break
+        fi
+        W_SOCK=$(ls "$RUNTIME_DIR"/wayland-* 2>/dev/null | head -n 1)
+        if [ -n "$W_SOCK" ] && [ -S "$W_SOCK" ]; then
+            export WAYLAND_DISPLAY="${W_SOCK##*/}"
+            WAYLAND_READY=1
+            break
+        fi
+        sleep 0.2
+    done
+
+    if [ "$WAYLAND_READY" -ne 1 ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERRO: Timeout aguardando socket Wayland em $RUNTIME_DIR." >> "$LOG"
+        exit 1
+    fi
+
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Socket Wayland detectado: $WAYLAND_DISPLAY" >> "$LOG"
+
+    # 2. Aguarda o compositor e os applets do COSMIC estabilizarem
+    sleep 2
+
+    # 3. Evita múltiplas instâncias caso já esteja rodando
+    if pgrep -x calamares >/dev/null 2>&1; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Calamares já está em execução. Encerrando monitor." >> "$LOG"
+        exit 0
+    fi
+
+    # 4. Dispara o launcher lsd-calamares
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Disparando /usr/bin/lsd-calamares..." >> "$LOG"
+    /usr/bin/lsd-calamares >> "$LOG" 2>&1 &
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] lsd-calamares iniciado com PID $!." >> "$LOG"
+) &
+
+# Executa a sessão padrão do COSMIC no processo principal
+exec /usr/bin/start-cosmic "$@"
