@@ -18,5 +18,4 @@ file_permissions=(
   ["/etc/sudoers"]="0:0:400"
   ["/etc/init.d/zram"]="0:0:755"
   ["/usr/lib/openrc/zram-service"]="0:0:755"
-  ["/usr/bin/start-cosmic-live"]="0:0:755"
 )
