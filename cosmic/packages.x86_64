@@ -2,6 +2,7 @@
 # core
 #
 lsd-core
+elogind-openrc
 limine
 mkinitcpio-archiso
 squashfs-tools
