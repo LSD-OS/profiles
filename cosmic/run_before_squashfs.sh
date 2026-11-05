@@ -63,20 +63,112 @@ do_welcome() {
     # Como o LSD_OS usa openrc e não systemd user session, o cosmic-session
     # não dispara o target xdg-desktop-autostart. O dex processa os desktop
     # files em /etc/xdg/autostart e ~/.config/autostart (como o calamares).
+    # Aguardamos a criação do socket Wayland pelo cosmic-comp para disparar
+    # com a variável WAYLAND_DISPLAY devidamente exportada.
     if [ -f "${airootfs}/usr/bin/start-cosmic" ] && ! grep -q 'dex -a' "${airootfs}/usr/bin/start-cosmic"; then
         sed -i '/^# Run cosmic-session/i \
 # Autostart XDG via dex (openrc / non-systemd)\
 (\
-    while [ -z "$WAYLAND_DISPLAY" ]; do\
+    RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"\
+    for i in $(seq 1 60); do\
+        [ -S "$RUNTIME_DIR/wayland-0" ] && break\
+        [ -n "$(ls "$RUNTIME_DIR"/wayland-* 2>/dev/null)" ] && break\
         sleep 0.5\
     done\
-    sleep 2\
+    if [ -S "$RUNTIME_DIR/wayland-0" ]; then\
+        export WAYLAND_DISPLAY="wayland-0"\
+    else\
+        W_SOCK=$(ls "$RUNTIME_DIR"/wayland-* 2>/dev/null | head -n 1)\
+        [ -n "$W_SOCK" ] && export WAYLAND_DISPLAY="${W_SOCK##*/}"\
+    fi\
+    sleep 1\
     if command -v dex >/dev/null 2>&1; then\
         dex -a -s /etc/xdg/autostart/:~/.config/autostart/ >/dev/null 2>&1 &\
     fi\
 ) &\
 ' "${airootfs}/usr/bin/start-cosmic"
         echo ">>> Hook do dex adicionado ao start-cosmic"
+    fi
+
+    # Limpeza da tela inicial (Desktop) e do menu de aplicativos:
+    # 1. Desativa live-session.desktop e desktop-items (evita criar README.txt e atalho na área de trabalho)
+    rm -fv "${airootfs}/etc/skel/.config/autostart/live-session.desktop"
+    rm -fv "${airootfs}/home/liveuser/.config/autostart/live-session.desktop"
+    if [ -f "${airootfs}/usr/bin/desktop-items" ]; then
+        printf '#!/bin/sh\nexit 0\n' > "${airootfs}/usr/bin/desktop-items"
+        chmod 755 "${airootfs}/usr/bin/desktop-items"
+    fi
+    rm -rf "${airootfs}/home/liveuser/Desktop/"* "${airootfs}/etc/skel/Desktop/"* 2>/dev/null || true
+
+    # 2. Remove o atalho redundante 'Install Artix' / 'Sistema de Instalação' do menu de apps,
+    # mantendo exclusivamente o 'Install LSD_OS' (lsd-calamares.desktop)
+    rm -fv "${airootfs}/usr/share/applications/calamares-config-switcher.desktop"
+    rm -fv "${airootfs}/usr/share/applications/calamares.desktop"
+}
+
+do_branding() {
+    echo "==> Aplicando branding LSD_OS! no OpenRC e arquivos do sistema..."
+
+    # Atualiza o banner do OpenRC de 'Artix Linux' para 'LSD_OS!' nos binários
+    perl -e '
+use strict;
+use warnings;
+
+for my $file (@ARGV) {
+    next unless -f $file;
+    open(my $fh, "+<:raw", $file) or next;
+    my $data;
+    { local $/; $data = <$fh>; }
+    my $changed = 0;
+    my $target_boot = "Artix Linux (%s)\0";
+    my $target_brand = "Artix Linux\0";
+    my $off_boot = index($data, $target_boot);
+    if ($off_boot != -1) {
+        my $repl_boot = "LSD_OS! (%s)\0";
+        my $pad_boot = "\0" x (length($target_boot) - length($repl_boot));
+        substr($data, $off_boot, length($target_boot), $repl_boot . $pad_boot);
+        my $old_suffix = $off_boot + 11;
+        my $pad_off = index($data, "\0" x 8, 0x9000);
+        if ($pad_off != -1) {
+            substr($data, $pad_off, 6, " (%s)\0");
+            for (my $i = 0; $i < length($data) - 7; $i++) {
+                my $disp = unpack("l", substr($data, $i + 3, 4));
+                if ($i + 7 + $disp == $old_suffix) {
+                    my $new_disp = $pad_off - ($i + 7);
+                    substr($data, $i + 3, 4, pack("l", $new_disp));
+                }
+            }
+        }
+        $changed = 1;
+    }
+    my $off_brand = index($data, $target_brand);
+    if ($off_brand != -1) {
+        my $repl_brand = "LSD_OS!\0";
+        my $pad_brand = "\0" x (length($target_brand) - length($repl_brand));
+        substr($data, $off_brand, length($target_brand), $repl_brand . $pad_brand);
+        $changed = 1;
+    }
+    if ($changed) {
+        seek($fh, 0, 0);
+        print $fh $data;
+        truncate($fh, length($data));
+        print ">>> Branding do OpenRC atualizado para LSD_OS! em $file\n";
+    }
+    close($fh);
+}
+' "${airootfs}/usr/bin/openrc" \
+  "${airootfs}/usr/bin/openrc-run" \
+  "${airootfs}/usr/bin/openrc-shutdown"
+
+    # Atualiza identificação em /etc/lsb-release caso exista
+    if [ -f "${airootfs}/etc/lsb-release" ]; then
+        sed -i 's/DISTRIB_ID=.*/DISTRIB_ID="LSD_OS"/' "${airootfs}/etc/lsb-release"
+        sed -i 's/DISTRIB_DESCRIPTION=.*/DISTRIB_DESCRIPTION="LSD_OS!"/' "${airootfs}/etc/lsb-release"
+    fi
+
+    # Atualiza identificação no grub caso exista
+    if [ -f "${airootfs}/etc/default/grub" ]; then
+        sed -i 's/GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="LSD_OS"/' "${airootfs}/etc/default/grub"
     fi
 }
 
@@ -180,6 +272,11 @@ fi
 if [ -f /etc/skel/.config/mimeapps.list ]; then
     cp -fv /etc/skel/.config/mimeapps.list /home/liveuser/.config/
 fi
+
+# Garante que a tela inicial (Desktop) comece limpa sem atalhos ou README.txt
+rm -rf /home/liveuser/Desktop/* /etc/skel/Desktop/* 2>/dev/null || true
+rm -f /home/liveuser/.config/autostart/live-session.desktop /etc/skel/.config/autostart/live-session.desktop
+
 chown -R liveuser:liveuser /home/liveuser
 
 usermod -aG users,adm,lp,power,video,network,storage,wheel,audio,sys,optical,scanner,rfkill,uucp liveuser
@@ -195,3 +292,4 @@ EOF
 ########## STARTS HERE ##########
 do_welcome
 do_merge
+do_branding
